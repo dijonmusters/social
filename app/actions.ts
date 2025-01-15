@@ -4,6 +4,7 @@ import { encodedRedirect } from "@/utils/utils";
 import { createClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -30,7 +31,7 @@ export const signUpAction = async (formData: FormData) => {
     return encodedRedirect(
       "success",
       "/sign-up",
-      "Thanks for signing up! Please check your email for a verification link.",
+      "Thanks for signing up! Please check your email for a verification link."
     );
   }
 };
@@ -71,7 +72,7 @@ export const forgotPasswordAction = async (formData: FormData) => {
     return encodedRedirect(
       "error",
       "/forgot-password",
-      "Could not reset password",
+      "Could not reset password"
     );
   }
 
@@ -82,7 +83,7 @@ export const forgotPasswordAction = async (formData: FormData) => {
   return encodedRedirect(
     "success",
     "/forgot-password",
-    "Check your email for a link to reset your password.",
+    "Check your email for a link to reset your password."
   );
 };
 
@@ -96,7 +97,7 @@ export const resetPasswordAction = async (formData: FormData) => {
     encodedRedirect(
       "error",
       "/protected/reset-password",
-      "Password and confirm password are required",
+      "Password and confirm password are required"
     );
   }
 
@@ -104,7 +105,7 @@ export const resetPasswordAction = async (formData: FormData) => {
     encodedRedirect(
       "error",
       "/protected/reset-password",
-      "Passwords do not match",
+      "Passwords do not match"
     );
   }
 
@@ -116,7 +117,7 @@ export const resetPasswordAction = async (formData: FormData) => {
     encodedRedirect(
       "error",
       "/protected/reset-password",
-      "Password update failed",
+      "Password update failed"
     );
   }
 
@@ -127,4 +128,91 @@ export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect("/sign-in");
+};
+
+export const followAllUsers = async () => {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  const { data: users } = await supabase
+    .from("profiles")
+    .select()
+    .neq("id", user.id);
+
+  const { data: follows } = await supabase
+    .from("follows")
+    .select()
+    .match({ user_id: user.id });
+
+  const newFollows = users
+    ?.filter(
+      (u) =>
+        !follows?.find((f) => f.user_id === user.id && f.follow_id === u.id)
+    )
+    .map((u) => ({
+      user_id: user.id,
+      follow_id: u.id,
+    }));
+
+  await supabase.from("follows").insert(newFollows);
+
+  return redirect("/onboarding/konami");
+};
+
+export const unfollowAllUsers = async () => {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  await supabase.from("follows").delete().match({ user_id: user.id });
+
+  return revalidatePath("/users");
+};
+
+export const followUser = async (userId: string) => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  await supabase
+    .from("follows")
+    .insert([{ user_id: user.id, follow_id: userId }]);
+
+  revalidatePath("/users");
+};
+
+export const unfollowUser = async (userId: string) => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/sign-in");
+  }
+
+  await supabase
+    .from("follows")
+    .delete()
+    .match({ user_id: user.id, follow_id: userId });
+
+  revalidatePath("/users");
 };
