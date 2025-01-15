@@ -24,7 +24,7 @@ export default function Countdown({ numFollowed }: { numFollowed: number }) {
   return (
     <div>
       <h1 className="text-6xl font-bold">
-        Follow {100 - numFollowed} more people!
+        Follow {50 - numFollowed} more people!
       </h1>
       <p className="text-gray-300 mt-2">You have {timeLeft} seconds left</p>
     </div>
