@@ -56,7 +56,7 @@ export default function Users({
 
     await followUser(userId);
 
-    if (optimisticFollows.length >= 10) {
+    if (optimisticFollows.length >= 50) {
       redirect("/onboarding/passed");
     }
   };

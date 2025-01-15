@@ -26,7 +26,8 @@ export default async function Index() {
   const { data: posts } = await supabase
     .from("posts")
     .select()
-    .in("user_id", followIds ?? []);
+    .in("user_id", followIds ?? [])
+    .order("created_at", { ascending: false });
 
   const postsWithProfile =
     posts?.map((post) => ({
